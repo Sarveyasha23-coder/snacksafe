@@ -32,9 +32,9 @@ function getLimiter(bucket: Bucket): Ratelimit | null {
 
 function getClientKey(request: NextRequest): string {
   // On Vercel, x-forwarded-for is supplied by the trusted platform proxy.
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const platformIp = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
   const realIp = request.headers.get("x-real-ip")?.trim();
-  return forwarded || realIp || "unknown";
+  return platformIp || realIp || "unknown";
 }
 
 /**

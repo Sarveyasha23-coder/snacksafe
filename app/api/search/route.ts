@@ -8,6 +8,9 @@ export async function GET(req: NextRequest) {
   if (blocked) return blocked;
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q || q.length < 2 || q.length > 80) return NextResponse.json({ products: [], error: "Enter a search term between 2 and 80 characters." }, { status: 400 });
+  const cacheKey = `search:${q.toLowerCase()}`;
+  const cached = await getCached<{ products: ReturnType<typeof mapOff>[]; count: number }>(cacheKey);
+  if (cached) return NextResponse.json({ ...cached, cached: true }, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600" } });
   try {
     const url = new URL("https://world.openfoodfacts.org/cgi/search.pl");
     url.searchParams.set("search_terms", q); url.searchParams.set("search_simple", "1");

@@ -1,5 +1,9 @@
 # SnackSafe v1.3
 
+**Built by Sarveyasha Sodhiya**
+
+A founder-led project focused on making packaged-food information easier to understand.
+
 Next.js + React + TypeScript prototype for exploring packaged snack nutrition. Version 1.3 adds a per-100 g side-by-side product comparison and a local-device comparison list while preserving barcode scanning and the existing Open Food Facts product analysis flow.
 
 ## Requirements

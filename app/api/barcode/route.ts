@@ -2,27 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { isValidGtin, sameGtin } from "@/lib/barcodes";
 import { mapOff } from "@/lib/products";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { getCached, saveProductRecord, setCached } from "@/lib/product-cache";
 
 export const runtime = "nodejs";
 export const revalidate = 0;
 
 const codeSchema = z.string().trim().refine(isValidGtin, "Enter a valid EAN-8, UPC-A, EAN-13 or GTIN-14 barcode, including its check digit.");
-const cache = new Map<string, { expires: number; product: ReturnType<typeof mapOff> }>();
-const TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_SECONDS = 60 * 60;
 const CACHE_HEADERS = { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" };
 
 export async function GET(req: NextRequest) {
+  const blocked = await enforceRateLimit(req, "barcode");
+  if (blocked) return blocked;
   const parsed = codeSchema.safeParse(req.nextUrl.searchParams.get("code") ?? "");
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid barcode." }, { status: 400 });
   }
 
   const code = parsed.data;
-  const cached = cache.get(code);
-  if (cached && cached.expires > Date.now()) {
-    return NextResponse.json({ product: cached.product, cached: true }, { headers: CACHE_HEADERS });
-  }
-  if (cached) cache.delete(code);
+  const cacheKey = `barcode:${code}`;
+  const cached = await getCached<ReturnType<typeof mapOff>>(cacheKey);
+  if (cached) return NextResponse.json({ product: cached, cached: true }, { headers: CACHE_HEADERS });
 
   try {
     const fields = [
@@ -55,16 +56,8 @@ export async function GET(req: NextRequest) {
     const mapped = mapOff(rawProduct as Record<string, any>);
     const product = { ...mapped, id: code, barcode: code, sourceUrl: `https://world.openfoodfacts.org/product/${encodeURIComponent(code)}` };
 
-    if (cache.size >= 500) {
-      for (const [key, entry] of cache) {
-        if (entry.expires <= Date.now()) cache.delete(key);
-      }
-      if (cache.size >= 500) {
-        const oldestKey = cache.keys().next().value;
-        if (oldestKey) cache.delete(oldestKey);
-      }
-    }
-    cache.set(code, { product, expires: Date.now() + TTL_MS });
+    await setCached(cacheKey, product, CACHE_TTL_SECONDS);
+    await saveProductRecord(product as ReturnType<typeof mapOff> & Record<string, unknown>);
     return NextResponse.json({ product, cached: false }, { headers: CACHE_HEADERS });
   } catch {
     return NextResponse.json({ error: "Could not reach Open Food Facts. Check your connection and try again." }, { status: 502 });

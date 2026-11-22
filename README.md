@@ -4,7 +4,7 @@
 
 A founder-led project focused on making packaged-food information easier to understand.
 
-Next.js + React + TypeScript prototype for exploring packaged snack nutrition. Version 1.3 adds a per-100 g side-by-side product comparison and a local-device comparison list while preserving barcode scanning and the existing Open Food Facts product analysis flow.
+Next.js + React + TypeScript application for exploring packaged snack nutrition. PostgreSQL-backed caching and distributed API protection are available when production credentials are configured. Version 1.3 adds a per-100 g side-by-side product comparison and a local-device comparison list while preserving barcode scanning and the existing Open Food Facts product analysis flow.
 
 ## Requirements
 - Node.js 20.9+
@@ -13,9 +13,12 @@ Next.js + React + TypeScript prototype for exploring packaged snack nutrition. V
 
 ## Run locally
 ```bash
+cp .env.example .env
 npm install
 npm run dev
 ```
+
+The app can run without database or Upstash credentials during local development. In that mode, cache and rate-limit fallbacks are process-local and are not suitable for production. To enable PostgreSQL locally, set DATABASE_URL, then run npm run db:dev to apply/create migrations.
 Open http://localhost:3000.
 
 ## Run core tests
@@ -37,6 +40,16 @@ The test suite compiles the pure TypeScript domain modules and runs Node's built
 - View experimental concern scores alongside the comparison, but the application does not rank products by that prototype score.
 - Open the linked Open Food Facts product record for provenance.
 
+## Production infrastructure
+- Prisma ORM with PostgreSQL models for cached API responses (ProductCache) and fetched product records (ProductRecord).
+- Barcode lookup uses a one-hour persistent database cache and saves the latest fetched product record when PostgreSQL is configured.
+- Product search uses a five-minute shared database cache when configured.
+- Upstash Redis sliding-window rate limits protect search (30/minute), barcode lookup (30/minute), and analysis (20/minute) endpoints. Production requests fail closed with HTTP 503 if Upstash credentials are missing or unavailable.
+- Without DATABASE_URL, cache falls back to a bounded in-memory cache per process. Without Upstash credentials, rate limiting is skipped only in development; production endpoints return 503.
+- Required production variables: DATABASE_URL, UPSTASH_REDIS_REST_URL, and UPSTASH_REDIS_REST_TOKEN. Copy .env.example and set real values in your hosting provider's encrypted environment-variable settings. Never commit .env or real credentials.
+- Apply the committed schema migration during deployment with npm run db:migrate; generate the Prisma client with npm run db:generate (also run automatically during install/build).
+- CI runs domain tests, ESLint and a production build. A production deployment is not complete until a real PostgreSQL database and Upstash Redis instance are provisioned and configured.
+
 ## API
 - `GET /api/search?q=potato%20chips`
 - `GET /api/barcode?code=4006381333931`
@@ -50,16 +63,16 @@ The test suite compiles the pure TypeScript domain modules and runs Node's built
 - Ingredient observations are deterministic keyword matches, not AI, toxicology analysis, allergen certification, or a regulatory compliance check. An additive's presence alone is not a health-danger verdict. Allergen notes should be cross-checked against the physical package and cross-contact warnings.
 - The 0–100 concern indicator is experimental, educational, and based on provisional prototype thresholds. It is not an official FSSAI score, clinical risk score, or probability of illness. It needs category-specific review and validation by qualified nutrition professionals before public-health use.
 - The bundled sample products contain illustrative values and are clearly marked as demo data; they are not real manufacturer labels.
-- A one-hour in-memory barcode cache is used per server process, with HTTP cache headers. It is not a persistent shared cache; production should use Redis or a database cache, add rate limiting, and monitor upstream API limits.
+- Database-backed cache is enabled only when DATABASE_URL is configured. Without it, the development fallback is in-memory and process-local. Monitor upstream Open Food Facts API limits and cache hit rates.
 - The barcode route validates the GS1 check digit and checks that the returned product code is GTIN-equivalent to the requested code when the upstream record supplies one. UPC-E is not implemented.
 - Browser comparison storage is local to the current browser/device. It is not backed by PostgreSQL and does not sync between devices.
 
 ## Next milestones
-1. Add PostgreSQL + Prisma persistent product cache, saved comparisons, and provenance/audit history.
-2. Add rate limiting and a shared cache for serverless deployment.
-3. Add browser end-to-end tests for camera permissions, camera lifecycle, barcode scanning, and manual fallback.
+1. Provision PostgreSQL and Upstash Redis, configure encrypted deployment environment variables, and apply migrations.
+2. Add browser end-to-end tests for camera permissions, camera lifecycle, barcode scanning, and manual fallback.
+3. Add user accounts, consent-based dietary preference controls, and cloud-synchronised saved comparisons.
 4. Replace prototype thresholds with category-specific, evidence-reviewed scoring rules.
-5. Add user accounts, consent-based dietary preference controls, and shareable comparisons.
+5. Add monitoring, alerting, backup/restore drills, and a security review.
 
 ## Data source
 Open Food Facts API. Respect its rate limits, identify your application with a User-Agent, and follow its attribution/licensing requirements. Product records are community-contributed and must be independently checked for safety-critical use.

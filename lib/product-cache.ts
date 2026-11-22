@@ -47,8 +47,8 @@ export async function setCached(key: string, payload: unknown, ttlSeconds: numbe
   try {
     await prisma.productCache.upsert({
       where: { cacheKey: key },
-      create: { cacheKey: key, payload: payload as object, expiresAt: new Date(Date.now() + ttlSeconds * 1000) },
-      update: { payload: payload as object, expiresAt: new Date(Date.now() + ttlSeconds * 1000) }
+      create: { cacheKey: key, payload: payload as never, expiresAt: new Date(Date.now() + ttlSeconds * 1000) },
+      update: { payload: payload as never, expiresAt: new Date(Date.now() + ttlSeconds * 1000) }
     });
   } catch (error) {
     console.error("SnackSafe persistent cache write failed; local fallback retained.", error);
@@ -72,13 +72,13 @@ export async function saveProductRecord(product: {
         name: product.name,
         brand: product.brand,
         sourceUrl: product.sourceUrl,
-        payload: product as object
+        payload: product as never
       },
       update: {
         name: product.name,
         brand: product.brand,
         sourceUrl: product.sourceUrl,
-        payload: product as object,
+        payload: product as never,
         lastFetchedAt: new Date()
       }
     });

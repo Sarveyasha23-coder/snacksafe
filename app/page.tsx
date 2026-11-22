@@ -130,7 +130,10 @@ export default function Home() {
   return (
     <main className="shell">
       <header className="nav">
-        <div className="logo">🥬 Snack<span>Safe</span></div>
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "1.2px", color: "#718078", marginBottom: "7px" }}>BUILT BY SARVEYASHA SODHIYA</div>
+          <div className="logo">🥬 Snack<span>Safe</span></div>
+        </div>
         <div className="navtag">NUTRITION, MADE CLEAR</div>
       </header>
 

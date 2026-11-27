@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Privacy notice | SnackSafe",
   description: "How the SnackSafe prototype handles product searches and comparison data."
@@ -6,7 +8,7 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main className="shell" style={{ maxWidth: 820, paddingTop: 48, paddingBottom: 64 }}>
-      <a href="/" className="text-button">← Back to SnackSafe</a>
+      <Link href="/" className="text-button">← Back to SnackSafe</Link>
       <div className="eyebrow" style={{ marginTop: 28 }}>Legal information</div>
       <h1>Privacy notice</h1>
       <p className="muted">Last updated: 27 November 2026 · Prototype notice; obtain legal review before public commercial launch.</p>

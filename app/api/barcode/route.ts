@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "The product database returned a different barcode. No product was selected; please verify the package code." }, { status: 502 });
     }
 
-    const mapped = mapOff(rawProduct as Record<string, any>);
+    const mapped = mapOff(rawProduct);
     const product = { ...mapped, id: code, barcode: code, sourceUrl: `https://world.openfoodfacts.org/product/${encodeURIComponent(code)}` };
 
     await setCached(cacheKey, product, CACHE_TTL_SECONDS);

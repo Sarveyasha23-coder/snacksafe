@@ -24,7 +24,9 @@ function getLimiter(bucket: Bucket): Ratelimit | null {
     redis,
     limiter: Ratelimit.slidingWindow(config.requests, config.window),
     prefix: `snacksafe:ratelimit:${bucket}`,
-    analytics: true
+    // Rate limiting does not depend on optional analytics writes. Keeping
+    // analytics disabled avoids extra Redis commands on every request.
+    analytics: false
   });
   limiters.set(bucket, limiter);
   return limiter;

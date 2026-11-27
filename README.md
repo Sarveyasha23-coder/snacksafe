@@ -76,3 +76,6 @@ The test suite compiles the pure TypeScript domain modules and runs Node's built
 
 ## Data source
 Open Food Facts API. Respect its rate limits, identify your application with a User-Agent, and follow its attribution/licensing requirements. Product records are community-contributed and must be independently checked for safety-critical use.
+
+## Deployment
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for the Vercel, Neon PostgreSQL, and Upstash production deployment runbook.

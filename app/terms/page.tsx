@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Terms of use | SnackSafe",
   description: "Terms and important limitations for using the SnackSafe prototype."
@@ -6,7 +8,7 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <main className="shell" style={{ maxWidth: 820, paddingTop: 48, paddingBottom: 64 }}>
-      <a href="/" className="text-button">← Back to SnackSafe</a>
+      <Link href="/" className="text-button">← Back to SnackSafe</Link>
       <div className="eyebrow" style={{ marginTop: 28 }}>Legal information</div>
       <h1>Terms of use</h1>
       <p className="muted">Last updated: 27 November 2026 · Prototype terms; obtain legal review before commercial launch.</p>

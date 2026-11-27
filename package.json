@@ -11,7 +11,8 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:dev": "prisma migrate dev"
+    "db:dev": "prisma migrate dev",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@zxing/browser": "^0.1.5",

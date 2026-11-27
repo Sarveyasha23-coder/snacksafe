@@ -67,7 +67,7 @@ The test suite compiles the pure TypeScript domain modules and runs Node's built
 - The barcode route validates the GS1 check digit and checks that the returned product code is GTIN-equivalent to the requested code when the upstream record supplies one. UPC-E is not implemented.
 - Browser comparison storage is local to the current browser/device. It is not backed by PostgreSQL and does not sync between devices.
 
-## Next milestones
+## Operational endpoints and legal notices\n\n- Readiness probe: `GET /api/health` checks PostgreSQL and Upstash Redis connectivity and returns HTTP 503 until both required production dependencies are available. It does not expose credentials.\n- Privacy notice: `/privacy`. This is a prototype disclosure and requires operator/legal review before commercial launch.\n- Terms of use: `/terms`. These explain the limits of community-contributed food and allergen data; they are not jurisdiction-specific legal advice.\n- Security reporting and secret-handling guidance: [SECURITY.md](./SECURITY.md).\n\n## Next milestones
 1. Provision PostgreSQL and Upstash Redis, configure encrypted deployment environment variables, and apply migrations.
 2. Add browser end-to-end tests for camera permissions, camera lifecycle, barcode scanning, and manual fallback.
 3. Add user accounts, consent-based dietary preference controls, and cloud-synchronised saved comparisons.

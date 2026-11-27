@@ -276,7 +276,7 @@ export default function Home() {
         <div className="bar"><span style={{ width: `${analysis.score ?? 0}%` }} /></div>
         <p className="muted">{analysis.summary} Confidence: {analysis.confidence}.</p>
 
-        {selected.source === "Demo" && <div className="demo-warning">Illustrative demo data only — these are not verified values from a real manufacturer's package.</div>}
+        {selected.source === "Demo" && <div className="demo-warning">Illustrative demo data only — these are not verified values from a real manufacturer&apos;s package.</div>}
         <div className="data-chips">
           {selected.barcode && <span>Barcode: {selected.barcode}</span>}
           {selected.quantity && <span>Pack: {selected.quantity}</span>}

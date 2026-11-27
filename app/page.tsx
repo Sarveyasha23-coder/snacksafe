@@ -327,7 +327,7 @@ export default function Home() {
         <div className="notice"><strong>Important:</strong> SnackSafe’s score is an experimental, educational nutrition indicator using per-100 g values and prototype thresholds. It is not an official FSSAI rating, medical diagnosis, or probability of harm. A numerical score is withheld when fewer than 3 of 6 factors are available. Missing values are not treated as zero. Serving size, frequency, dietary needs and the full diet matter. Product data is community-contributed and may be incomplete or incorrect. Verify the physical package before making decisions.</div>
       </section>
 
-      <footer className="notice" style={{ border: 0, textAlign: "center" }}>Product data: Open Food Facts · Ingredient observations are limited keyword matches · SnackSafe prototype v1.3</footer>
+      <footer className="notice" style={{ border: 0, textAlign: "center" }}>Product data: Open Food Facts · Ingredient observations are limited keyword matches · SnackSafe prototype v1.3 · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
       {scannerOpen && <BarcodeScanner onDetected={lookupBarcode} onClose={() => setScannerOpen(false)} />}
     </main>
   );

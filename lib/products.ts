@@ -53,8 +53,10 @@ function cleanTags(value: unknown): string[] {
 }
 
 /** Convert only explicitly per-100 g OFF fields. Missing/implausible values stay missing. */
-export function mapOff(p: Record<string, any>): SnackProduct {
-  const x = p.nutriments && typeof p.nutriments === "object" ? p.nutriments : {};
+export function mapOff(p: Record<string, unknown>): SnackProduct {
+  const x: Record<string, unknown> = p.nutriments && typeof p.nutriments === "object" && !Array.isArray(p.nutriments)
+    ? p.nutriments as Record<string, unknown>
+    : {};
   const energyKcal = finite(x["energy-kcal_100g"], 1000);
   const energyKj = finite(x["energy_100g"], 4184);
   const salt = finite(x["salt_100g"]);

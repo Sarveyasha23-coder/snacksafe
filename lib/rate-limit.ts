@@ -30,16 +30,25 @@ function getLimiter(bucket: Bucket): Ratelimit | null {
   return limiter;
 }
 
-function getClientKey(request: NextRequest): string {
-  // On Vercel, x-forwarded-for is supplied by the trusted platform proxy.
-  const platformIp = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+/**
+ * Read the address supplied by the deployment's trusted reverse proxy.
+ * Never use arbitrary user input as a rate-limit identity. Configure the host
+ * to overwrite/normalize forwarding headers before exposing this application.
+ */
+function getClientKey(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-vercel-forwarded-for")
+    ?? request.headers.get("x-forwarded-for");
+  const forwardedIp = forwarded?.split(",")[0]?.trim();
   const realIp = request.headers.get("x-real-ip")?.trim();
-  return platformIp || realIp || "unknown";
+  const candidate = forwardedIp || realIp;
+  if (!candidate || candidate.length > 64 || /[\s,]/.test(candidate)) return null;
+  return candidate;
 }
 
 /**
  * Returns a response when the request must be stopped, otherwise null.
- * Production fails closed if shared rate-limit credentials are missing.
+ * Production fails closed if shared rate-limit credentials or a trusted
+ * client address are unavailable. Local development remains convenient.
  */
 export async function enforceRateLimit(request: NextRequest, bucket: Bucket): Promise<NextResponse | null> {
   const limiter = getLimiter(bucket);
@@ -53,8 +62,19 @@ export async function enforceRateLimit(request: NextRequest, bucket: Bucket): Pr
     return null;
   }
 
+  const clientKey = getClientKey(request);
+  if (!clientKey) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Request protection could not identify this connection. Please try again later." },
+        { status: 503 }
+      );
+    }
+    return null;
+  }
+
   try {
-    const result = await limiter.limit(getClientKey(request));
+    const result = await limiter.limit(clientKey);
     const headers = {
       "X-RateLimit-Limit": String(result.limit),
       "X-RateLimit-Remaining": String(result.remaining),

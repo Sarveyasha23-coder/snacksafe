@@ -38,11 +38,10 @@ export default function BarcodeScanner({ onDetected, onClose }: { onDetected: (c
         if (active) setStatus("Camera permission was denied or the camera is unavailable. Enter the barcode manually below.");
       }
     }
-    start();
+    void start();
     return () => {
       active = false;
       controls?.stop();
-      reader.reset();
     };
   }, [onDetected]);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { demos, inspectIngredients, SnackProduct } from "@/lib/products";
 import { scoreNutrition } from "@/lib/scoring";
@@ -172,7 +173,7 @@ export default function Home() {
               <article key={product.id} className={`product ${selected.id === product.id ? "selected-product" : ""}`}>
                 <button className="product-main" onClick={() => setSelected(product)} aria-label={`Analyse ${product.name}`}>
                   <div className="producttop">
-                    <div className="thumb">{product.image ? <img src={product.image} alt={`${product.name} package`} /> : "🥨"}</div>
+                    <div className="thumb">{product.image ? <Image src={product.image} alt={`${product.name} package`} width={72} height={72} unoptimized /> : "🥨"}</div>
                     <div>
                       <h3>{product.name}</h3>
                       <div className="muted">{product.brand}</div>
@@ -276,7 +277,7 @@ export default function Home() {
         <div className="bar"><span style={{ width: `${analysis.score ?? 0}%` }} /></div>
         <p className="muted">{analysis.summary} Confidence: {analysis.confidence}.</p>
 
-        {selected.source === "Demo" && <div className="demo-warning">Illustrative demo data only — these are not verified values from a real manufacturer's package.</div>}
+        {selected.source === "Demo" && <div className="demo-warning">Illustrative demo data only — these are not verified values from a real manufacturer&apos;s package.</div>}
         <div className="data-chips">
           {selected.barcode && <span>Barcode: {selected.barcode}</span>}
           {selected.quantity && <span>Pack: {selected.quantity}</span>}

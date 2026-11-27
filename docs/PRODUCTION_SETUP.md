@@ -48,7 +48,7 @@ For a Vercel deployment:
 
 Set the same variables in Preview only if you intend previews to use a separate non-production database and Redis instance. Never point preview deployments at production data unless you have explicitly designed access controls and data isolation.
 
-## 4. Security and operations before public launch
+## 4. Readiness probe\n\nAfter configuring PostgreSQL and Upstash Redis, open `/api/health` on the deployed host. A successful response means both dependencies answered a connectivity check. A 503 response includes only dependency status (missing/error), not credentials. This probe does not validate migrations, backup integrity, API correctness, or overall application security.\n\n## 5. Security and operations before public launch
 
 - Keep all secrets out of the repository and client-side NEXT_PUBLIC_* variables.
 - Restrict database network access where the provider supports it.
@@ -60,7 +60,7 @@ Set the same variables in Preview only if you intend previews to use a separate 
 - Add account-level abuse controls if user accounts are introduced. IP limits alone are not an identity system.
 - Have a qualified security reviewer inspect the app before collecting personal or sensitive data.
 
-## Current product limitations
+## 6. Current product limitations
 
 - Product records are persisted from barcode lookups only; search results are cached but not all inserted into the product history table.
 - Saved comparisons remain local to each browser. PostgreSQL persistence for user accounts and cross-device comparisons is not implemented.

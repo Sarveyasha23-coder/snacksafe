@@ -1,0 +1,56 @@
+name: Apply Neon database migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: "Type APPLY to confirm applying committed Prisma migrations to production Neon"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snacksafe-neon-production-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: ${{ inputs.confirm_production == 'APPLY' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate database secrets are present
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          test -n "$DATABASE_URL" || (echo "Missing repository secret DATABASE_URL" && exit 1)
+          test -n "$DIRECT_URL" || (echo "Missing repository secret DIRECT_URL" && exit 1)
+
+      - name: Apply committed Prisma migrations to Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: npx prisma migrate deploy
+
+      - name: Verify Prisma migration status
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: npx prisma migrate status

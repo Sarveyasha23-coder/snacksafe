@@ -3,14 +3,17 @@ import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 
 type Bucket = "search" | "barcode" | "analyze";
-const limits: Record<Bucket, { requests: number; window: `${number} ${"s" | "m" | "h"}` }> = {
-  search: { requests: 30, window: "1 m" },
-  barcode: { requests: 30, window: "1 m" },
-  analyze: { requests: 20, window: "1 m" }
+const limits: Record<Bucket, { requests: number; windowMs: number; redisWindow: `${number} ${"s" | "m" | "h"}` }> = {
+  search: { requests: 30, windowMs: 60_000, redisWindow: "1 m" },
+  barcode: { requests: 30, windowMs: 60_000, redisWindow: "1 m" },
+  analyze: { requests: 20, windowMs: 60_000, redisWindow: "1 m" }
 };
 
 let redis: Redis | null = null;
 const limiters = new Map<Bucket, Ratelimit>();
+type MemoryEntry = { timestamps: number[]; touchedAt: number };
+const memoryBuckets = new Map<string, MemoryEntry>();
+const MAX_MEMORY_KEYS = 10_000;
 
 function getLimiter(bucket: Bucket): Ratelimit | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -22,57 +25,62 @@ function getLimiter(bucket: Bucket): Ratelimit | null {
   const config = limits[bucket];
   const limiter = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(config.requests, config.window),
+    limiter: Ratelimit.slidingWindow(config.requests, config.redisWindow),
     prefix: `snacksafe:ratelimit:${bucket}`,
-    // Rate limiting does not depend on optional analytics writes. Keeping
-    // analytics disabled avoids extra Redis commands on every request.
     analytics: false
   });
   limiters.set(bucket, limiter);
   return limiter;
 }
 
-/**
- * Read the address supplied by the deployment's trusted reverse proxy.
- * Never use arbitrary user input as a rate-limit identity. Configure the host
- * to overwrite/normalize forwarding headers before exposing this application.
- */
-function getClientKey(request: NextRequest): string | null {
+function getClientKey(request: NextRequest): string {
   const forwarded = request.headers.get("x-vercel-forwarded-for")
     ?? request.headers.get("x-forwarded-for");
   const forwardedIp = forwarded?.split(",")[0]?.trim();
   const realIp = request.headers.get("x-real-ip")?.trim();
   const candidate = forwardedIp || realIp;
-  if (!candidate || candidate.length > 64 || /[\s,]/.test(candidate)) return null;
-  return candidate;
+  return candidate && candidate.length <= 64 && !/[\\s,]/.test(candidate)
+    ? candidate
+    : "unknown-client";
 }
 
-/**
- * Returns a response when the request must be stopped, otherwise null.
- * Production fails closed if shared rate-limit credentials or a trusted
- * client address are unavailable. Local development remains convenient.
- */
+/** Bounded per-instance fallback; shared Redis remains the preferred limiter. */
+function enforceMemoryLimit(bucket: Bucket, clientKey: string): boolean {
+  const now = Date.now();
+  const config = limits[bucket];
+  const key = `${bucket}:${clientKey}`;
+  let entry = memoryBuckets.get(key);
+  if (!entry) {
+    if (memoryBuckets.size >= MAX_MEMORY_KEYS) {
+      for (const [existingKey, existing] of memoryBuckets) {
+        if (now - existing.touchedAt > 2 * 60_000) memoryBuckets.delete(existingKey);
+      }
+      if (memoryBuckets.size >= MAX_MEMORY_KEYS) {
+        const oldest = memoryBuckets.keys().next().value;
+        if (oldest) memoryBuckets.delete(oldest);
+      }
+    }
+    entry = { timestamps: [], touchedAt: now };
+    memoryBuckets.set(key, entry);
+  }
+  entry.timestamps = entry.timestamps.filter(timestamp => now - timestamp < config.windowMs);
+  entry.touchedAt = now;
+  if (entry.timestamps.length >= config.requests) return false;
+  entry.timestamps.push(now);
+  return true;
+}
+
 export async function enforceRateLimit(request: NextRequest, bucket: Bucket): Promise<NextResponse | null> {
+  const clientKey = getClientKey(request);
   const limiter = getLimiter(bucket);
+
   if (!limiter) {
     if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { error: "Service configuration is incomplete. Please try again later." },
-        { status: 503, headers: { "Retry-After": "60" } }
-      );
+      console.error("SnackSafe rate-limit store is not configured; using bounded instance fallback.");
     }
-    return null;
-  }
-
-  const clientKey = getClientKey(request);
-  if (!clientKey) {
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { error: "Request protection could not identify this connection. Please try again later." },
-        { status: 503 }
-      );
-    }
-    return null;
+    return enforceMemoryLimit(bucket, clientKey)
+      ? null
+      : NextResponse.json({ error: "Too many requests. Please wait a moment and try again." }, { status: 429, headers: { "Retry-After": "60" } });
   }
 
   try {
@@ -90,10 +98,9 @@ export async function enforceRateLimit(request: NextRequest, bucket: Bucket): Pr
     }
     return null;
   } catch (error) {
-    console.error("SnackSafe rate-limit service unavailable.", error);
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json({ error: "Request protection is temporarily unavailable. Please try again shortly." }, { status: 503 });
-    }
-    return null;
+    console.error("SnackSafe rate-limit service unavailable; using bounded instance fallback.", error);
+    return enforceMemoryLimit(bucket, clientKey)
+      ? null
+      : NextResponse.json({ error: "Too many requests. Please wait a moment and try again." }, { status: 429, headers: { "Retry-After": "60" } });
   }
 }
